@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ResumePilot | Professional Resume Builder</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        /* Reset and base styles to prevent scrolling */
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* Prevent scrolling on the body */
+        }
+        
+        /* App background */
+        .app-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+        
+        /* Header with fixed height */
+        .app-header {
+            height: 70px; /* Fixed header height */
+            display: flex;
+            align-items: center;
+            position: relative;
+            z-index: 10;
+        }
+        
+        /* Main container takes remaining height */
+        .app-container {
+            height: calc(100vh - 70px); /* Viewport height minus header height */
+            overflow: hidden;
+            padding: 0.5rem;
+            box-sizing: border-box; /* Include padding in height calculation */
+        }
+        
+        .content-area {
+            height: 100%;
+            display: flex;
+            gap: 1rem;
+        }
+        
+        .builder-container, .preview-container {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            flex: 1;
+            /* Add padding to prevent content from touching edges */
+            padding: 1rem;
+            border-radius: 12px;
+            background-color: #fff;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+        
+        .builder-header, .preview-header {
+            flex-shrink: 0; /* Don't allow headers to shrink */
+            padding-bottom: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        /* Ensure the form container takes all available space */
+        .form-container {
+            flex: 1;
+            overflow-y: auto;
+            padding-right: 10px;
+            /* Add bottom padding to ensure the button is visible */
+            padding-bottom: 20px;
+        }
+        
+        .resume-preview-wrapper {
+            flex: 1;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+        
+        /* Make sure form actions are visible */
+        .form-actions {
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+            padding-bottom: 0.5rem;
+        }
+        
+        /* Scrollbar styling */
+        .form-container::-webkit-scrollbar,
+        .resume-preview-wrapper::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .form-container::-webkit-scrollbar-track,
+        .resume-preview-wrapper::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        
+        .form-container::-webkit-scrollbar-thumb,
+        .resume-preview-wrapper::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 4px;
+        }
+        
+        .form-container::-webkit-scrollbar-thumb:hover,
+        .resume-preview-wrapper::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+        
+        /* Remove the line below contact info in resume preview */
+        .resume-header::after {
+            display: none;
+        }
+        
+        /* Toast container positioning */
+        .toast-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        
+        /* Ensure buttons have proper spacing */
+        .btn {
+            margin-bottom: 5px;
+        }
+        
+        /* Ensure form sections have proper spacing */
+        .form-section {
+            padding-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-background">
+        <div class="bg-shape shape-1"></div>
+        <div class="bg-shape shape-2"></div>
+    </div>
+
+    <header class="app-header">
+        <div class="container">
+            <div class="logo">
+                <i class="fas fa-file-alt"></i>
+                <h1>ResumePilot</h1>
+            </div>
+            <div class="color-selector">
+                <span class="color-label">Color Theme:</span>
+                <div class="color-options">
+                    <div class="color-option active" data-color="blue" style="background-color: #4f46e5;"></div>
+                    <div class="color-option" data-color="green" style="background-color: #10b981;"></div>
+                    <div class="color-option" data-color="purple" style="background-color: #8b5cf6;"></div>
+                    <div class="color-option" data-color="red" style="background-color: #ef4444;"></div>
+                    <div class="color-option" data-color="gray" style="background-color: #4b5563;"></div>
+                </div>
+            </div>
+            <div class="actions">
+                <button id="downloadPDF" class="btn btn-primary"><i class="fas fa-download"></i> Download PDF</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="app-container">
+        <div class="content-area">
+            <div class="builder-container">
+                <div class="builder-header">
+                    <h2>Resume Builder</h2>
+                    <div class="progress-indicator">
+                        <div class="progress-step active" data-step="personal">
+                            <div class="step-number">1</div>
+                            <span>Personal</span>
+                        </div>
+                        <div class="progress-step" data-step="education">
+                            <div class="step-number">2</div>
+                            <span>Education</span>
+                        </div>
+                        <div class="progress-step" data-step="experience">
+                            <div class="step-number">3</div>
+                            <span>Experience</span>
+                        </div>
+                        <div class="progress-step" data-step="skills">
+                            <div class="step-number">4</div>
+                            <span>Skills</span>
+                        </div>
+                        <div class="progress-step" data-step="projects">
+                            <div class="step-number">5</div>
+                            <span>Projects</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- This div now has overflow-y: auto and padding-bottom -->
+                <div class="form-container">
+                    <div class="form-section active" id="personal-section">
+                        <div class="section-header">
+                            <i class="fas fa-user"></i>
+                            <h3>Personal Information</h3>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="firstName">First Name</label>
+                                <input type="text" id="firstName" class="form-control" value="Harsh">
+                            </div>
+                            <div class="form-group">
+                                <label for="lastName">Last Name</label>
+                                <input type="text" id="lastName" class="form-control" value="Batra">
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="email">Email</label>
+                                <div class="input-with-icon">
+                                    <i class="fas fa-envelope"></i>
+                                    <input type="email" id="email" class="form-control" value="harsh62442@gmail.com">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="phone">Phone</label>
+                                <div class="input-with-icon">
+                                    <i class="fas fa-phone"></i>
+                                    <input type="tel" id="phone" class="form-control" value="9116692952">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="address">Location</label>
+                                <div class="input-with-icon">
+                                    <i class="fas fa-map-marker-alt"></i>
+                                    <input type="text" id="address" class="form-control" value="Jaipur">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="linkedin">LinkedIn</label>
+                                <div class="input-with-icon">
+                                    <i class="fab fa-linkedin"></i>
+                                    <input type="text" id="linkedin" class="form-control" value="linkedin/harshbatra">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="summary">Professional Summary</label>
+                            <textarea id="summary" class="form-control" rows="4">Moving forward with a learning mindset</textarea>
+                        </div>
+                        
+                        <div class="form-actions">
+                            <button class="btn btn-primary next-section" data-next="education">Next: Education <i class="fas fa-arrow-right"></i></button>
+                        </div>
+                    </div>
+                    
+                    <div class="form-section" id="education-section">
+                        <div class="section-header">
+                            <i class="fas fa-graduation-cap"></i>
+                            <h3>Education</h3>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="degree">Degree</label>
+                                <input type="text" id="degree" class="form-control" value="B. Tech">
+                            </div>
+                            <div class="form-group">
+                                <label for="major">Major</label>
+                                <input type="text" id="major" class="form-control" value="Mechanical Engineering">
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="institution">Institution</label>
+                                <input type="text" id="institution" class="form-control" value="LNMIIT">
+                            </div>
+                            <div class="form-group">
+                                <label for="year">Year</label>
+                                <input type="text" id="year" class="form-control" value="2026">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="gpa">GPA</label>
+                            <input type="text" id="gpa" class="form-control" placeholder="e.g., 3.8">
+                        </div>
+                        
+                        <div class="form-actions">
+                            <button class="btn btn-outline prev-section" data-prev="personal"><i class="fas fa-arrow-left"></i> Previous</button>
+                            <button class="btn btn-primary next-section" data-next="experience">Next: Experience <i class="fas fa-arrow-right"></i></button>
+                        </div>
+                    </div>
+                    
+                    <div class="form-section" id="experience-section">
+                        <div class="section-header">
+                            <i class="fas fa-briefcase"></i>
+                            <h3>Experience</h3>
+                        </div>
+                        
+                        <div id="experience-entries">
+                            <div class="experience-entry">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Job Title</label>
+                                        <input type="text" class="job-title form-control" value="Javascript Developer Intern">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Company</label>
+                                        <input type="text" class="company form-control" value="Pianalytix">
+                                    </div>
+                                </div>
+                                
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Start Date</label>
+                                        <input type="text" class="start-date form-control" value="7/4/25">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>End Date</label>
+                                        <input type="text" class="end-date form-control" value="Present">
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>Description</label>
+                                    <textarea class="description form-control" rows="3">Created Javascript projects and its tutorials</textarea>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button id="add-experience" class="btn btn-outline btn-sm"><i class="fas fa-plus"></i> Add Another Experience</button>
+                        
+                        <div class="form-actions">
+                            <button class="btn btn-outline prev-section" data-prev="education"><i class="fas fa-arrow-left"></i> Previous</button>
+                            <button class="btn btn-primary next-section" data-next="skills">Next: Skills <i class="fas fa-arrow-right"></i></button>
+                        </div>
+                    </div>
+                    
+                    <div class="form-section" id="skills-section">
+                        <div class="section-header">
+                            <i class="fas fa-tools"></i>
+                            <h3>Skills</h3>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Add Skills (comma separated)</label>
+                            <div class="input-with-button">
+                                <input type="text" id="skill-input" class="form-control" placeholder="e.g., JavaScript, React, Node.js">
+                                <button id="add-skill" class="btn btn-outline btn-sm"><i class="fas fa-plus"></i></button>
+                            </div>
+                        </div>
+                        
+                        <div class="skills-container" id="skills-list">
+                            <div class="skill-tag">JavaScript <span class="remove-skill">&times;</span></div>
+                            <div class="skill-tag">C++ <span class="remove-skill">&times;</span></div>
+                            <div class="skill-tag">Python <span class="remove-skill">&times;</span></div>
+                        </div>
+                        
+                        <div class="form-actions">
+                            <button class="btn btn-outline prev-section" data-prev="experience"><i class="fas fa-arrow-left"></i> Previous</button>
+                            <button class="btn btn-primary next-section" data-next="projects">Next: Projects <i class="fas fa-arrow-right"></i></button>
+                        </div>
+                    </div>
+                    
+                    <div class="form-section" id="projects-section">
+                        <div class="section-header">
+                            <i class="fas fa-code-branch"></i>
+                            <h3>Projects</h3>
+                        </div>
+                        
+                        <div id="project-entries">
+                            <div class="project-entry">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Project Name</label>
+                                        <input type="text" class="project-name form-control" value="Intelligent Decision Making Camera Sytstem">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Year</label>
+                                        <input type="text" class="project-year form-control" value="2024">
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>Description</label>
+                                    <textarea class="project-description form-control" rows="3">Real time threat detection camera system</textarea>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button id="add-project" class="btn btn-outline btn-sm"><i class="fas fa-plus"></i> Add Another Project</button>
+                        
+                        <div class="form-actions">
+                            <button class="btn btn-outline prev-section" data-prev="skills"><i class="fas fa-arrow-left"></i> Previous</button>
+                            <button class="btn btn-primary" id="complete-resume">Complete Resume <i class="fas fa-check"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="preview-container">
+                <div class="preview-header">
+                    <h2>Resume Preview</h2>
+                    <div class="preview-actions">
+                        <button id="zoom-in" class="btn btn-icon"><i class="fas fa-search-plus"></i></button>
+                        <button id="zoom-out" class="btn btn-icon"><i class="fas fa-search-minus"></i></button>
+                        <button id="toggle-preview" class="btn btn-icon"><i class="fas fa-expand-alt"></i></button>
+                    </div>
+                </div>
+                
+                <!-- This div now has overflow-y: auto -->
+                <div class="resume-preview-wrapper">
+                    <div id="resume-preview" class="resume-preview">
+                        <div class="resume-header">
+                            <h1 id="preview-name">Harsh Batra</h1>
+                            <div class="contact-info">
+                                <span id="preview-email"><i class="fas fa-envelope"></i> harsh62442@gmail.com</span>
+                                <span id="preview-phone"><i class="fas fa-phone"></i> 9116692952</span>
+                                <span id="preview-address"><i class="fas fa-map-marker-alt"></i> Jaipur</span>
+                                <span id="preview-linkedin"><i class="fab fa-linkedin"></i> linkedin/harshbatra</span>
+                            </div>
+                        </div>
+                        
+                        <div class="resume-section">
+                            <h2>SUMMARY</h2>
+                            <div class="section-content">
+                                <p id="preview-summary">Moving forward with a learning mindset</p>
+                            </div>
+                        </div>
+                        
+                        <div class="resume-section">
+                            <h2>EDUCATION</h2>
+                            <div class="section-content">
+                                <div class="education-entry">
+                                    <div class="education-header">
+                                        <h3 id="preview-degree-major">B. Tech in Mechanical Engineering</h3>
+                                        <span class="education-year" id="preview-year">2026</span>
+                                    </div>
+                                    <div class="education-details">
+                                        <span id="preview-institution">LNMIIT</span>
+                                        <span id="preview-gpa"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="resume-section">
+                            <h2>EXPERIENCE</h2>
+                            <div class="section-content" id="preview-experience">
+                                <div class="experience-entry">
+                                    <div class="experience-header">
+                                        <h3>Javascript Developer Intern</h3>
+                                        <span class="experience-date">7/4/25 - Present</span>
+                                    </div>
+                                    <div class="experience-company">Pianalytix</div>
+                                    <p class="experience-description">Created Javascript projects and its tutorials</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="resume-section">
+                            <h2>SKILLS</h2>
+                            <div class="section-content">
+                                <div class="skills-list" id="preview-skills">
+                                    <span class="skill-item">JavaScript</span>
+                                    <span class="skill-item">C++</span>
+                                    <span class="skill-item">Python</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="resume-section">
+                            <h2>PROJECTS</h2>
+                            <div class="section-content" id="preview-projects">
+                                <div class="project-entry">
+                                    <div class="project-header">
+                                        <h3>Intelligent Decision Making Camera Sytstem</h3>
+                                        <span class="project-year">2024</span>
+                                    </div>
+                                    <p class="project-description">Real time threat detection camera system</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div class="toast-container" id="toast-container"></div>
+
+    <script src="script.js"></script>
+    <script>
+        // Add this script to fix the download functionality
+        document.getElementById('downloadPDF').addEventListener('click', function() {
+            // Show a toast notification
+            const toastContainer = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'toast toast-info';
+            toast.innerHTML = `
+                <div class="toast-icon"><i class="fas fa-info-circle"></i></div>
+                <div class="toast-content">
+                    <div class="toast-title">Preparing Download</div>
+                    <div class="toast-message">Your resume is being prepared for download...</div>
+                </div>
+            `;
+            toastContainer.appendChild(toast);
+            
+            // Fade in the toast
+            setTimeout(() => toast.classList.add('show'), 10);
+            
+            // Get the resume preview element
+            const element = document.getElementById('resume-preview');
+            
+            // Set options for html2pdf
+            const opt = {
+                margin: [0.5, 0.5, 0.5, 0.5],
+                filename: 'resume.pdf',
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true },
+                jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+            };
+            
+            // Generate PDF
+            html2pdf().set(opt).from(element).save().then(() => {
+                // Remove the info toast
+                toast.remove();
+                
+                // Show success toast
+                const successToast = document.createElement('div');
+                successToast.className = 'toast toast-success';
+                successToast.innerHTML = `
+                    <div class="toast-icon"><i class="fas fa-check-circle"></i></div>
+                    <div class="toast-content">
+                        <div class="toast-title">Download Ready</div>
+                        <div class="toast-message">Your resume has been downloaded successfully!</div>
+                    </div>
+                `;
+                toastContainer.appendChild(successToast);
+                
+                // Fade in the success toast
+                setTimeout(() => successToast.classList.add('show'), 10);
+                
+                // Remove the toast after 3 seconds
+                setTimeout(() => {
+                    successToast.classList.remove('show');
+                    setTimeout(() => successToast.remove(), 300);
+                }, 3000);
+            }).catch(err => {
+                // Remove the info toast
+                toast.remove();
+                
+                // Show error toast
+                const errorToast = document.createElement('div');
+                errorToast.className = 'toast toast-error';
+                errorToast.innerHTML = `
+                    <div class="toast-icon"><i class="fas fa-exclamation-circle"></i></div>
+                    <div class="toast-content">
+                        <div class="toast-title">Download Failed</div>
+                        <div class="toast-message">There was an error generating your PDF. Please try again.</div>
+                    </div>
+                `;
+                toastContainer.appendChild(errorToast);
+                
+                // Fade in the error toast
+                setTimeout(() => errorToast.classList.add('show'), 10);
+                
+                // Remove the toast after 3 seconds
+                setTimeout(() => {
+                    errorToast.classList.remove('show');
+                    setTimeout(() => errorToast.remove(), 300);
+                }, 3000);
+                
+                console.error('Error generating PDF:', err);
+            });
+        });
+    </script>
+</body>
+</html>
